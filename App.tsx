@@ -32,6 +32,11 @@ const App: React.FC = () => {
   const [savedStories, setSavedStories] = useState<StoryResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Refinement Loop State
+  const [showTweakPanel, setShowTweakPanel] = useState(false);
+  const [tweakText, setTweakText] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
   // Soundscape State
   const [isAtmosphereEnabled, setIsAtmosphereEnabled] = useState(false);
   const [atmosphereVolume, setAtmosphereVolume] = useState(0.2);
@@ -68,6 +73,14 @@ const App: React.FC = () => {
     localStorage.setItem('dreamweaver_vol', String(atmosphereVolume));
   }, [selectedVoice, isAtmosphereEnabled, atmosphereVolume]);
 
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Ambient Audio Engine
   useEffect(() => {
     if (!isAtmosphereEnabled) {
@@ -103,24 +116,46 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent, isRefinement = false) => {
+    if (e) e.preventDefault();
     const finalInput = { ...input, genre: isCustomGenre ? customGenre : input.genre, setting: isCustomSetting ? customSetting : input.setting };
+    
     if (!finalInput.childName || !finalInput.genre || !finalInput.setting) {
       setError("Please ensure all story details are filled in.");
       return;
     }
+
     setIsGenerating(true);
     setError(null);
     stopReading();
+    
     try {
-      const content = await generateBedtimeStory(finalInput);
-      const newStory: StoryResponse = { id: Math.random().toString(36).substr(2, 9), content, timestamp: Date.now(), input: finalInput };
+      const content = await generateBedtimeStory(
+        finalInput, 
+        isRefinement ? tweakText : undefined, 
+        isRefinement ? currentStory?.content : undefined
+      );
+      
+      const newStory: StoryResponse = { 
+        id: Math.random().toString(36).substr(2, 9), 
+        content, 
+        timestamp: Date.now(), 
+        input: finalInput 
+      };
+      
       setCurrentStory(newStory);
       setHistory(prev => [newStory, ...prev.filter(s => s.id !== newStory.id)]);
+      
+      if (isRefinement) {
+        setShowTweakPanel(false);
+        setTweakText('');
+        setToast({ message: "Dream refined successfully ✨", type: 'success' });
+      }
     } catch (err: any) { 
       setError(err.message || "The stars are hidden behind clouds. Let's try again in a moment."); 
-    } finally { setIsGenerating(false); }
+    } finally { 
+      setIsGenerating(false); 
+    }
   };
 
   const toggleSaveStory = () => {
@@ -169,13 +204,35 @@ const App: React.FC = () => {
     }
   };
 
+  const handleReaction = (type: string) => {
+    if (type === 'tweak') {
+      setShowTweakPanel(!showTweakPanel);
+    } else {
+      setToast({ message: "Thank you! Your feedback helps the stars shine brighter.", type: 'info' });
+    }
+  };
+
   const recentTales = useMemo(() => {
     const savedIds = new Set(savedStories.map(s => s.id));
     return history.filter(s => !savedIds.has(s.id));
   }, [history, savedStories]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 relative">
+      {/* Feedback Toast */}
+      {toast && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className={`px-6 py-3 rounded-full border shadow-2xl backdrop-blur-xl flex items-center gap-3 ${
+            toast.type === 'success' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-100' : 'bg-slate-800/80 border-slate-700 text-slate-200'
+          }`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="opacity-50 hover:opacity-100">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="text-center mb-12 animate-in fade-in duration-1000">
         <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 mb-2 drop-shadow-sm">
           Dreamweaver
@@ -187,7 +244,7 @@ const App: React.FC = () => {
         {/* Sidebar */}
         <div className="lg:col-span-4 space-y-6">
           <Card title="The Loom" subtitle="Set your story's threads">
-            <form onSubmit={handleGenerate} className="space-y-4">
+            <form onSubmit={(e) => handleGenerate(e)} className="space-y-4">
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
@@ -386,34 +443,6 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {recentTales.length > 0 && (
-              <div className="animate-in fade-in slide-in-from-left-4 duration-1000">
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.25em] mb-4 px-2 flex items-center gap-3">
-                  <div className="w-4 h-[1px] bg-slate-700/30"></div>
-                  Recent Tales
-                </h3>
-                <div className="space-y-2.5">
-                  {recentTales.map(story => (
-                    <button
-                      key={story.id}
-                      onClick={() => { setCurrentStory(story); setInput(story.input); stopReading(); }}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                        currentStory?.id === story.id 
-                        ? 'bg-slate-700/50 border-slate-500 text-slate-100' 
-                        : 'bg-slate-900/30 border-slate-800/50 text-slate-500 hover:bg-slate-800/40 hover:text-slate-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-sm truncate">{story.input.childName}</p>
-                        <svg className="w-3 h-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      </div>
-                      <p className="text-[10px] opacity-60 font-medium">{story.input.genre} • {story.input.setting}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -445,7 +474,6 @@ const App: React.FC = () => {
                         ? 'text-rose-500 bg-rose-500/10 shadow-lg shadow-rose-500/20 scale-110'
                         : 'text-slate-600 hover:text-rose-400 bg-slate-700/30 hover:bg-rose-400/5'
                       }`}
-                      title={savedStories.some(s => s.id === currentStory.id) ? "Saved to Library" : "Save to Library"}
                     >
                       <svg className="w-8 h-8" fill={savedStories.some(s => s.id === currentStory.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -453,7 +481,6 @@ const App: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Interaction Controls */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto bg-slate-900/60 p-4 rounded-[2rem] border border-slate-700/50 shadow-inner backdrop-blur-xl">
                     <div className="flex items-center gap-4 w-full">
                       <select
@@ -469,7 +496,7 @@ const App: React.FC = () => {
                         size="md" 
                         onClick={handleReadAloud}
                         isLoading={isAudioLoading}
-                        className={`flex-1 min-w-[130px] rounded-2xl shadow-xl transition-transform active:scale-95 ${isReading ? 'animate-pulse' : ''}`}
+                        className={`flex-1 min-w-[130px] rounded-2xl shadow-xl ${isReading ? 'animate-pulse' : ''}`}
                       >
                         {isReading ? 'Stop Reading' : 'Read Aloud'}
                       </Button>
@@ -478,12 +505,11 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Ambient Atmosphere Controls */}
-                <div className="mb-10 p-5 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-top-4 duration-500">
+                <div className="mb-10 p-5 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col md:flex-row items-center gap-6">
                   <div className="flex items-center gap-4 min-w-[140px]">
                     <button 
                       onClick={() => setIsAtmosphereEnabled(!isAtmosphereEnabled)}
                       className={`p-3 rounded-2xl transition-all duration-300 shadow-lg ${isAtmosphereEnabled ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-slate-700/50 text-slate-400 hover:text-slate-200'}`}
-                      title="Toggle Atmosphere"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -515,10 +541,6 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 min-w-[120px]">
-                    <div className="flex justify-between items-center px-1">
-                       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Volume</span>
-                       <span className="text-[10px] text-slate-400 tabular-nums">{Math.round(atmosphereVolume * 100)}%</span>
-                    </div>
                     <input 
                       type="range" 
                       min="0" max="1" step="0.01" 
@@ -530,8 +552,75 @@ const App: React.FC = () => {
                 </div>
                 
                 {/* Story Content */}
-                <div className="story-text text-xl md:text-2xl text-slate-200 whitespace-pre-wrap leading-loose italic border-l-4 border-indigo-500/20 pl-10 md:pl-14 py-6 mb-12 drop-shadow-sm selection:bg-indigo-500/30">
+                <div className="story-text text-xl md:text-2xl text-slate-200 whitespace-pre-wrap leading-loose italic border-l-4 border-indigo-500/20 pl-10 md:pl-14 py-6 mb-12 drop-shadow-sm">
                   {currentStory.content}
+                </div>
+
+                {/* Feedback & Refinement Loop */}
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                  <div className="flex flex-wrap items-center justify-center gap-4 py-8 border-t border-slate-700/30">
+                    <button 
+                      onClick={() => handleReaction('magical')}
+                      className="group px-6 py-2.5 rounded-full bg-indigo-500/5 border border-indigo-500/20 hover:border-indigo-400/50 text-indigo-200/60 hover:text-indigo-200 transition-all flex items-center gap-2 shadow-sm hover:shadow-indigo-500/10"
+                    >
+                      <span className="group-hover:scale-125 transition-transform duration-300">✨</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">Magical</span>
+                    </button>
+                    <button 
+                      onClick={() => handleReaction('sleepy')}
+                      className="group px-6 py-2.5 rounded-full bg-purple-500/5 border border-purple-500/20 hover:border-purple-400/50 text-purple-200/60 hover:text-purple-200 transition-all flex items-center gap-2 shadow-sm hover:shadow-purple-500/10"
+                    >
+                      <span className="group-hover:scale-125 transition-transform duration-300">😴</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">Sleepy</span>
+                    </button>
+                    <button 
+                      onClick={() => handleReaction('tweak')}
+                      className={`group px-6 py-2.5 rounded-full transition-all flex items-center gap-2 shadow-sm border ${
+                        showTweakPanel 
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' 
+                        : 'bg-slate-700/10 border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span className={`group-hover:rotate-12 transition-transform duration-300 ${showTweakPanel ? 'animate-spin-slow' : ''}`}>🛠️</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">Tweak</span>
+                    </button>
+                  </div>
+
+                  {showTweakPanel && (
+                    <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-[2rem] animate-in slide-in-from-top-4 duration-500">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
+                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-300">Polish the Dream</h4>
+                      </div>
+                      <p className="text-sm text-slate-400 italic mb-4">Tell the stars what you'd like to change... (e.g. "Add a soft rain sound", "Leo wants to be a pilot", "Make it shorter")</p>
+                      <div className="flex flex-col gap-4">
+                        <textarea
+                          value={tweakText}
+                          onChange={(e) => setTweakText(e.target.value)}
+                          placeholder="My wish for this story is..."
+                          className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-5 py-4 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600 min-h-[100px] text-lg resize-none"
+                        />
+                        <div className="flex justify-end gap-3">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => { setShowTweakPanel(false); setTweakText(''); }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            variant="primary" 
+                            size="md" 
+                            onClick={() => handleGenerate(undefined, true)}
+                            isLoading={isGenerating}
+                            disabled={!tweakText.trim()}
+                          >
+                            Regenerate with Polish
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-16 pt-10 border-t border-slate-700/30 flex items-center justify-between">
@@ -539,7 +628,6 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3 pr-4">
                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_10px_rgba(129,140,248,0.5)]"></div>
                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-500/40 animate-pulse [animation-delay:0.3s]"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-500/10 animate-pulse [animation-delay:0.6s]"></div>
                   </div>
                 </div>
               </Card>

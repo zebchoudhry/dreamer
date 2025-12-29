@@ -5,7 +5,11 @@ import { StoryInput } from "../types";
 // Note: process.env.API_KEY is handled externally
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
-export const generateBedtimeStory = async (input: StoryInput): Promise<string> => {
+export const generateBedtimeStory = async (
+  input: StoryInput, 
+  feedback?: string, 
+  originalStory?: string
+): Promise<string> => {
   const ai = getAI();
   
   const lengthPrompt = input.length === 'short' 
@@ -31,34 +35,47 @@ export const generateBedtimeStory = async (input: StoryInput): Promise<string> =
     SAFETY PHILOSOPHY:
     You are a gentle, child-safe storyteller. Your goal is to ensure content is appropriate for a ${input.childAge}-year-old. 
     Avoid truly horrific, sexual, or violent themes. 
-    If a user suggests something slightly "scary" or "complex" (like a storm or a dragon), do not refuse to write. Instead, pivot the story to show how that element is actually cozy, friendly, or easily solved (e.g., the storm sounds like a drum, the dragon breathes bubbles).
+    If a user suggests something slightly "scary" or "complex", pivot to show how that element is actually cozy, friendly, or easily solved.
     
     ENVIRONMENTAL RULES:
-    - Use clear atmosphere words that describe sounds or feelings (e.g., rustling leaves, gentle waves, crackling fire).
-    - Limit the story to no more than TWO distinct environments.
-    - Keep the setting stable and calm. Transition slowly.
+    - Use clear atmosphere words (e.g., rustling leaves, gentle waves).
+    - Limit to no more than TWO distinct environments. Keep transitions slow.
     
     CONTENT RULES:
-    - Write for a ${input.childAge} year old child using simple, melodic language.
+    - Write for a ${input.childAge} year old using simple, melodic language.
     - ${pronounGuidance}
     - Short, clear sentences. Warm, reassuring tone.
-    - No moralizing, lecturing, or educational framing.
+    - No moralizing or lecturing.
     - Focus on safety, kindness, and reassurance.
-    - Always end with a safe, sleepy conclusion (getting cozy, yawning, falling asleep).
-    - Write in third person using "${input.childName}" naturally.
-    - Plain text only.
+    - Always end with a safe, sleepy conclusion (getting cozy, falling asleep).
+    - Write in third person using "${input.childName}".
+    - Plain text only. No markdown formatting like bolding or italics.
     
     ${personalizationContext}
     
     Length: ${lengthPrompt}.
   `.trim();
 
-  const prompt = `
+  let prompt = `
     Write a soothing bedtime story about ${input.childName} (${input.childAge} years old).
     Genre: ${input.genre}.
     Setting: ${input.setting}.
-    The story should be a peaceful journey towards sleep, featuring ${input.childName}'s familiar world.
+    The story should be a peaceful journey towards sleep.
   `.trim();
+
+  if (feedback && originalStory) {
+    prompt = `
+      The user would like to TWEAK a story you previously wrote.
+      
+      ORIGINAL STORY:
+      "${originalStory}"
+      
+      USER FEEDBACK / REQUESTED CHANGES:
+      "${feedback}"
+      
+      REWRITE the story incorporating this feedback while strictly adhering to the safety and tone rules. Maintain the personalization for ${input.childName}.
+    `.trim();
+  }
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -93,10 +110,6 @@ export const generateStoryAudio = async (text: string, voice: string = 'Kore'): 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
-      safetySettings: [
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
