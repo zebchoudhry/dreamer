@@ -3,7 +3,8 @@ import { GoogleGenAI, Modality, GenerateContentResponse } from "@google/genai";
 import { StoryInput } from "../types";
 
 // Note: process.env.API_KEY is handled externally
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Always use new GoogleGenAI({apiKey: process.env.API_KEY}) directly
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * LITERARY BLUEPRINTS
@@ -128,9 +129,10 @@ export const generateBedtimeStory = async (
   }
 
   try {
+    // Corrected to use direct prompt string for contents as per guidelines
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview', 
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: prompt,
       config: {
         systemInstruction,
         temperature: 0.9, 
@@ -151,6 +153,7 @@ export const generateBedtimeStory = async (
 export const generateStoryAudio = async (text: string, voice: string = 'Kore'): Promise<Uint8Array> => {
   const ai = getAI();
   try {
+    // Contents structure follows the TTS example in instructions
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],

@@ -44,14 +44,6 @@ const App: React.FC = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Verification of configuration
-  useEffect(() => {
-    if (!process.env.API_KEY || process.env.API_KEY === 'undefined') {
-      console.warn("API_KEY environment variable is not defined. Ensure it is set in Vercel settings and the build is re-run.");
-      setError("The storyteller needs a key to open the book. Please check your API configuration.");
-    }
-  }, []);
-
   // Persistence
   useEffect(() => {
     const savedHist = localStorage.getItem('dreamweaver_history');
@@ -208,7 +200,8 @@ const App: React.FC = () => {
       setShowTweakPanel(!showTweakPanel);
       if (!showTweakPanel) {
         setTimeout(() => {
-          document.getElementById('tweak-panel')?.scrollIntoView({ behavior: 'smooth' });
+          const el = document.getElementById('tweak-panel');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       }
     } else {
