@@ -1,18 +1,6 @@
 import { GoogleGenAI, Modality, GenerateContentResponse } from "@google/genai";
 import { StoryInput } from "../types";
 
-// The value of process.env.API_KEY is replaced during the build process by Vite.
-const getAI = () => {
-  const apiKey = process.env.API_KEY;
-  
-  // If Vite didn't find the key during build, it will be an empty string here.
-  if (!apiKey || apiKey === "") {
-    throw new Error("API Key is missing from the application bundle. Check Vercel settings and RE-DEPLOY.");
-  }
-  
-  return new GoogleGenAI({ apiKey });
-};
-
 /**
  * LITERARY BLUEPRINTS
  */
@@ -63,7 +51,7 @@ export const generateBedtimeStory = async (
   feedback?: string, 
   originalStory?: string
 ): Promise<string> => {
-  const ai = getAI();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const blueprint = selectBlueprint(input);
   
   const lengthPrompt = input.length === 'short' 
@@ -116,12 +104,12 @@ export const generateBedtimeStory = async (
     return response.text;
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error(error.message || "The storyteller is resting.");
+    throw new Error("The storyteller is resting. Please try again.");
   }
 };
 
 export const generateStoryAudio = async (text: string, voice: string = 'Kore'): Promise<Uint8Array> => {
-  const ai = getAI();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
