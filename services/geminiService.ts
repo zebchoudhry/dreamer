@@ -51,6 +51,7 @@ export const generateBedtimeStory = async (
   feedback?: string, 
   originalStory?: string
 ): Promise<string> => {
+  // This string will be replaced by the actual key during the Vite build process.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const blueprint = selectBlueprint(input);
   
@@ -104,7 +105,7 @@ export const generateBedtimeStory = async (
     return response.text;
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error("The storyteller is resting. Please try again.");
+    throw new Error("The storyteller is resting. Please try again in a moment.");
   }
 };
 
