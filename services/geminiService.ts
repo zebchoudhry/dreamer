@@ -5,18 +5,75 @@ import { StoryInput } from "../types";
 // Note: process.env.API_KEY is handled externally
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
+/**
+ * LITERARY BLUEPRINTS
+ * Derived from public domain classics to guide the AI's stylistic choices.
+ */
+const BLUEPRINTS = {
+  POTTER: {
+    style: "Beatrix Potter / Nature",
+    focus: "Miniature sensory details, soft nature sounds, the gentle busyness of small creatures.",
+    guideline: "Describe the specific texture of things—the velvet of a leaf, the dampness of moss. Use rhythmic, lilting sentences."
+  },
+  MILNE: {
+    style: "A.A. Milne / Whimsical Home",
+    focus: "Gentle humor, simple but profound dialogue, a deep sense of safety and companionship.",
+    guideline: "Focus on the comfort of being together. Use dialogue that is slightly repetitive and very reassuring. No high stakes, just 'being'."
+  },
+  GRAHAME: {
+    style: "Kenneth Grahame / Atmospheric Adventure",
+    focus: "Lush environment descriptions, the 'spirit' of a place, a slow journey toward a cozy end.",
+    guideline: "Paint a picture with words. Describe the light filtering through trees or the sound of water. The setting is a character itself."
+  },
+  CARROLL: {
+    style: "Lewis Carroll / Whimsical Wonder",
+    focus: "Curious logic, gentle nonsense, and bright, shifting colors.",
+    guideline: "Look at the world from an unusual angle. Describe a star as if it were a glowing button or the moon as a silver saucer. Focus on gentle surprises."
+  },
+  KIPLING: {
+    style: "Rudyard Kipling / The Mythic Origin",
+    focus: "Rhythmic address, repetition, and an 'ancient' warmth.",
+    guideline: "Use an affectionate tone like 'O my small explorer'. Explain why things are the way they are (e.g., why the toy bunny has soft ears). Use satisfying, repetitive phrases."
+  },
+  DAHL: {
+    style: "Roald Dahl / Magical Mischief",
+    focus: "Inventive words, playful rebellion, and vivid, 'sparky' descriptions.",
+    guideline: "Write with a twinkle in your eye. Invent a gentle, silly word for a sound (like 'splatch-winkle'). Describe characters with one slightly exaggerated feature. The magic should feel surprising and cheeky but settle into a quiet, cozy safety at the end."
+  }
+};
+
+const selectBlueprint = (input: StoryInput) => {
+  if (input.genre === 'Mischief') {
+    return BLUEPRINTS.DAHL;
+  }
+  if (input.genre === 'Animals' || input.setting === 'Forest' || input.setting === 'Farm') {
+    return BLUEPRINTS.POTTER;
+  }
+  if (input.genre === 'Everyday Life' || input.setting === 'Home' || input.setting === 'Night Garden') {
+    return BLUEPRINTS.MILNE;
+  }
+  if (input.genre === 'Space' || input.genre === 'Adventure') {
+    return BLUEPRINTS.CARROLL;
+  }
+  if (input.genre === 'Fairy Tale') {
+    return BLUEPRINTS.KIPLING;
+  }
+  return BLUEPRINTS.GRAHAME; // Default for others like City, Castle, Ocean
+};
+
 export const generateBedtimeStory = async (
   input: StoryInput, 
   feedback?: string, 
   originalStory?: string
 ): Promise<string> => {
   const ai = getAI();
+  const blueprint = selectBlueprint(input);
   
   const lengthPrompt = input.length === 'short' 
-    ? 'approximately 2 minutes reading time (~300 words)' 
+    ? 'approximately 300 words' 
     : input.length === 'medium' 
-    ? 'approximately 4 minutes reading time (~600 words)' 
-    : 'approximately 6 minutes reading time (~900 words)';
+    ? 'approximately 600 words' 
+    : 'approximately 900 words';
 
   const pronounGuidance = input.gender === 'boy' 
     ? 'Use male pronouns (he/him).' 
@@ -26,81 +83,68 @@ export const generateBedtimeStory = async (
 
   const personalizationContext = `
     PERSONAL TOUCHES:
-    ${input.familyMembers ? `- Family present: ${input.familyMembers}. They should appear as comforting, supportive presences.` : ''}
-    ${input.pets ? `- Animal friends: ${input.pets}. They should be gentle companions in the story.` : ''}
-    ${input.comfortItem ? `- Special item: ${input.comfortItem}. This item should provide comfort and security during the story's resolution.` : ''}
+    ${input.familyMembers ? `- Family present: ${input.familyMembers}. They are the soft background of the story, like a warm blanket.` : ''}
+    ${input.pets ? `- Animal friends: ${input.pets}. They move quietly and stay close.` : ''}
+    ${input.comfortItem ? `- Special item: ${input.comfortItem}. This item is a source of quiet magic or deep peace.` : ''}
   `.trim();
 
   const systemInstruction = `
-    SAFETY PHILOSOPHY:
-    You are a gentle, child-safe storyteller. Your goal is to ensure content is appropriate for a ${input.childAge}-year-old. 
-    Avoid truly horrific, sexual, or violent themes. 
-    If a user suggests something slightly "scary" or "complex", pivot to show how that element is actually cozy, friendly, or easily solved.
+    ROLE: 
+    You are a master children's storyteller inspired by classic literature (${blueprint.style}). 
+    Your tone is calm, supportive, and deeply atmospheric.
     
-    ENVIRONMENTAL RULES:
-    - Use clear atmosphere words (e.g., rustling leaves, gentle waves).
-    - Limit to no more than TWO distinct environments. Keep transitions slow.
+    LITERARY GUIDELINES (The ${blueprint.style} Style):
+    - ${blueprint.focus}
+    - ${blueprint.guideline}
+    - ABSOLUTELY FORBIDDEN: AI cliches like "Once upon a time in a land far away", "Little did they know", or "The moral of the story is".
+    - SENSORY ANCHOR: Every paragraph must include one soft sound (rustling, humming) or one gentle touch (soft, warm, fuzzy).
     
     CONTENT RULES:
-    - Write for a ${input.childAge} year old using simple, melodic language.
+    - Target Age: ${input.childAge} years old. Use sophisticated but accessible vocabulary.
     - ${pronounGuidance}
-    - Short, clear sentences. Warm, reassuring tone.
-    - No moralizing or lecturing.
-    - Focus on safety, kindness, and reassurance.
-    - Always end with a safe, sleepy conclusion (getting cozy, falling asleep).
-    - Write in third person using "${input.childName}".
-    - Plain text only. No markdown formatting like bolding or italics.
+    - Pace: Extremely slow. Describe the setting more than the action.
+    - Structure: The character discovers a peaceful place, has a small gentle moment, then slowly prepares for sleep.
+    - Ending: Always end with the character feeling perfectly safe, tucked in, and closing their eyes.
+    - Format: Plain text only. No markdown.
     
     ${personalizationContext}
-    
-    Length: ${lengthPrompt}.
   `.trim();
 
   let prompt = `
-    Write a soothing bedtime story about ${input.childName} (${input.childAge} years old).
-    Genre: ${input.genre}.
-    Setting: ${input.setting}.
-    The story should be a peaceful journey towards sleep.
+    Weave a tale about ${input.childName}.
+    Theme: ${input.genre} in the ${input.setting}.
+    Length: ${lengthPrompt}.
+    Start the story with a sensory observation of the ${input.setting}.
   `.trim();
 
   if (feedback && originalStory) {
     prompt = `
-      The user would like to TWEAK a story you previously wrote.
+      The parent has a wish for this story.
+      ORIGINAL STORY: "${originalStory}"
+      THE WISH: "${feedback}"
       
-      ORIGINAL STORY:
-      "${originalStory}"
-      
-      USER FEEDBACK / REQUESTED CHANGES:
-      "${feedback}"
-      
-      REWRITE the story incorporating this feedback while strictly adhering to the safety and tone rules. Maintain the personalization for ${input.childName}.
+      REWRITE the story incorporating the wish while maintaining the ${blueprint.style} literary quality and the focus on ${input.childName}.
     `.trim();
   }
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview', 
       contents: [{ parts: [{ text: prompt }] }],
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      ],
       config: {
         systemInstruction,
-        temperature: 0.8,
+        temperature: 0.9, 
       },
     });
 
     if (!response.text) {
-      throw new Error("Content was not generated. Please try a different theme.");
+      throw new Error("The stars are too dim to read by. Try a different setting.");
     }
 
     return response.text;
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error("The storyteller is taking a quiet nap. Let's try weaving a different tale together.");
+    throw new Error("The storyteller is dreaming of new ideas. Let's try again in a heartbeat.");
   }
 };
 

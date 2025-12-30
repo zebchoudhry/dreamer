@@ -207,15 +207,23 @@ const App: React.FC = () => {
   const handleReaction = (type: string) => {
     if (type === 'tweak') {
       setShowTweakPanel(!showTweakPanel);
+      if (!showTweakPanel) {
+        setTimeout(() => {
+          document.getElementById('tweak-panel')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     } else {
       setToast({ message: "Thank you! Your feedback helps the stars shine brighter.", type: 'info' });
     }
   };
 
-  const recentTales = useMemo(() => {
-    const savedIds = new Set(savedStories.map(s => s.id));
-    return history.filter(s => !savedIds.has(s.id));
-  }, [history, savedStories]);
+  const handleNewStory = () => {
+    setCurrentStory(null);
+    stopReading();
+    setShowTweakPanel(false);
+    setTweakText('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 relative">
@@ -452,6 +460,13 @@ const App: React.FC = () => {
 
           {currentStory ? (
             <div className="space-y-8 animate-in zoom-in-95 duration-700">
+              <div className="flex justify-start">
+                <Button variant="ghost" size="sm" onClick={handleNewStory} className="flex items-center gap-2 text-indigo-300 hover:text-indigo-100 border border-indigo-500/20 hover:border-indigo-500/50 px-4">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                  New Story
+                </Button>
+              </div>
+
               <Card className="relative overflow-visible shadow-2xl border-slate-700/50 transition-all duration-500">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
@@ -556,66 +571,88 @@ const App: React.FC = () => {
                   {currentStory.content}
                 </div>
 
-                {/* Feedback & Refinement Loop */}
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                  <div className="flex flex-wrap items-center justify-center gap-4 py-8 border-t border-slate-700/30">
+                {/* Refined Reflection & Feedback Loop */}
+                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 mt-20 border-t border-slate-700/30 pt-12">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">Reflection</h3>
+                    <p className="text-2xl font-bold text-slate-100 tracking-tight italic">How was tonight's dream?</p>
+                    <p className="text-slate-500 text-sm italic">"Every detail helps the stars guide our next tale."</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
                       onClick={() => handleReaction('magical')}
-                      className="group px-6 py-2.5 rounded-full bg-indigo-500/5 border border-indigo-500/20 hover:border-indigo-400/50 text-indigo-200/60 hover:text-indigo-200 transition-all flex items-center gap-2 shadow-sm hover:shadow-indigo-500/10"
+                      className="group p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10 hover:border-indigo-400/50 hover:bg-indigo-500/10 transition-all text-left flex flex-col gap-3 shadow-sm hover:shadow-indigo-500/10"
                     >
-                      <span className="group-hover:scale-125 transition-transform duration-300">✨</span>
-                      <span className="text-xs font-bold uppercase tracking-widest">Magical</span>
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">✨</div>
+                      <div>
+                        <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Magical</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">The words had a perfect rhythm for our night.</p>
+                      </div>
                     </button>
+
                     <button 
                       onClick={() => handleReaction('sleepy')}
-                      className="group px-6 py-2.5 rounded-full bg-purple-500/5 border border-purple-500/20 hover:border-purple-400/50 text-purple-200/60 hover:text-purple-200 transition-all flex items-center gap-2 shadow-sm hover:shadow-purple-500/10"
+                      className="group p-6 rounded-[2rem] bg-purple-500/5 border border-purple-500/10 hover:border-purple-400/50 hover:bg-purple-500/10 transition-all text-left flex flex-col gap-3 shadow-sm hover:shadow-purple-500/10"
                     >
-                      <span className="group-hover:scale-125 transition-transform duration-300">😴</span>
-                      <span className="text-xs font-bold uppercase tracking-widest">Sleepy</span>
+                      <div className="w-10 h-10 rounded-2xl bg-purple-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">😴</div>
+                      <div>
+                        <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Sleepy</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">It was gentle enough to lull a sleepyhead.</p>
+                      </div>
                     </button>
+
                     <button 
                       onClick={() => handleReaction('tweak')}
-                      className={`group px-6 py-2.5 rounded-full transition-all flex items-center gap-2 shadow-sm border ${
+                      className={`group p-6 rounded-[2rem] transition-all text-left flex flex-col gap-3 shadow-sm border ${
                         showTweakPanel 
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' 
-                        : 'bg-slate-700/10 border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200'
+                        ? 'bg-amber-500/20 border-amber-500/50' 
+                        : 'bg-slate-700/5 border-slate-700 hover:border-slate-500 hover:bg-slate-700/10'
                       }`}
                     >
-                      <span className={`group-hover:rotate-12 transition-transform duration-300 ${showTweakPanel ? 'animate-spin-slow' : ''}`}>🛠️</span>
-                      <span className="text-xs font-bold uppercase tracking-widest">Tweak</span>
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl group-hover:rotate-12 transition-transform ${showTweakPanel ? 'bg-amber-500/30 text-amber-100 animate-spin-slow' : 'bg-slate-700/30 text-slate-400'}`}>🛠️</div>
+                      <div>
+                        <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Tweak Threads</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Adjust a detail or change the ending slightly.</p>
+                      </div>
                     </button>
                   </div>
 
                   {showTweakPanel && (
-                    <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-[2rem] animate-in slide-in-from-top-4 duration-500">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
-                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-300">Polish the Dream</h4>
+                    <div id="tweak-panel" className="p-8 bg-indigo-500/5 border border-indigo-500/20 rounded-[2.5rem] animate-in slide-in-from-top-6 duration-700">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+                          <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-indigo-300 tracking-tight italic">What shall we change?</h4>
+                          <p className="text-xs text-slate-500">"The stars are listening to your wish."</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-slate-400 italic mb-4">Tell the stars what you'd like to change... (e.g. "Add a soft rain sound", "Leo wants to be a pilot", "Make it shorter")</p>
-                      <div className="flex flex-col gap-4">
+                      
+                      <div className="flex flex-col gap-6">
                         <textarea
                           value={tweakText}
                           onChange={(e) => setTweakText(e.target.value)}
-                          placeholder="My wish for this story is..."
-                          className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-5 py-4 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600 min-h-[100px] text-lg resize-none"
+                          placeholder="Tell us your wish... (e.g. 'Add a secret cave', 'Mention the red kite', 'Make the end even quieter')"
+                          className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-6 py-5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600 min-h-[120px] text-lg resize-none italic"
                         />
-                        <div className="flex justify-end gap-3">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                        <div className="flex justify-end gap-4">
+                          <button 
                             onClick={() => { setShowTweakPanel(false); setTweakText(''); }}
+                            className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors px-4"
                           >
-                            Cancel
-                          </Button>
+                            Close
+                          </button>
                           <Button 
                             variant="primary" 
                             size="md" 
                             onClick={() => handleGenerate(undefined, true)}
                             isLoading={isGenerating}
                             disabled={!tweakText.trim()}
+                            className="shadow-xl"
                           >
-                            Regenerate with Polish
+                            Polish the Tale
                           </Button>
                         </div>
                       </div>
@@ -623,7 +660,7 @@ const App: React.FC = () => {
                   )}
                 </div>
 
-                <div className="mt-16 pt-10 border-t border-slate-700/30 flex items-center justify-between">
+                <div className="mt-20 pt-10 border-t border-slate-700/30 flex items-center justify-between">
                   <span className="font-semibold italic text-indigo-300/60 text-lg">Goodnight, {currentStory.input.childName}...</span>
                   <div className="flex items-center gap-3 pr-4">
                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_10px_rgba(129,140,248,0.5)]"></div>

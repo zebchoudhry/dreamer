@@ -73,5 +73,5 @@ export const VOICES: { id: StoryVoice; label: string; desc: string }[] = [
   { id: 'Fenrir', label: 'Fenrir', desc: 'Soft & Whispering' },
 ];
 
-export const DEFAULT_GENRES = ['Animals', 'Adventure', 'Fairy Tale', 'Space', 'Everyday Life'];
+export const DEFAULT_GENRES = ['Animals', 'Adventure', 'Fairy Tale', 'Space', 'Everyday Life', 'Mischief'];
 export const DEFAULT_SETTINGS = ['Home', 'Forest', 'Castle', 'City', 'Ocean', 'Farm', 'Night Garden'];
