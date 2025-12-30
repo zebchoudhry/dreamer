@@ -1,14 +1,20 @@
-
 import { GoogleGenAI, Modality, GenerateContentResponse } from "@google/genai";
 import { StoryInput } from "../types";
 
-// Note: process.env.API_KEY is handled externally
-// Always use new GoogleGenAI({apiKey: process.env.API_KEY}) directly
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// The value of process.env.API_KEY is replaced during the build process by Vite.
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  
+  // If Vite didn't find the key during build, it will be an empty string here.
+  if (!apiKey || apiKey === "") {
+    throw new Error("API Key is missing from the application bundle. Check Vercel settings and RE-DEPLOY.");
+  }
+  
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * LITERARY BLUEPRINTS
- * Derived from public domain classics to guide the AI's stylistic choices.
  */
 const BLUEPRINTS = {
   POTTER: {
@@ -44,22 +50,12 @@ const BLUEPRINTS = {
 };
 
 const selectBlueprint = (input: StoryInput) => {
-  if (input.genre === 'Mischief') {
-    return BLUEPRINTS.DAHL;
-  }
-  if (input.genre === 'Animals' || input.setting === 'Forest' || input.setting === 'Farm') {
-    return BLUEPRINTS.POTTER;
-  }
-  if (input.genre === 'Everyday Life' || input.setting === 'Home' || input.setting === 'Night Garden') {
-    return BLUEPRINTS.MILNE;
-  }
-  if (input.genre === 'Space' || input.genre === 'Adventure') {
-    return BLUEPRINTS.CARROLL;
-  }
-  if (input.genre === 'Fairy Tale') {
-    return BLUEPRINTS.KIPLING;
-  }
-  return BLUEPRINTS.GRAHAME; // Default for others like City, Castle, Ocean
+  if (input.genre === 'Mischief') return BLUEPRINTS.DAHL;
+  if (input.genre === 'Animals' || input.setting === 'Forest' || input.setting === 'Farm') return BLUEPRINTS.POTTER;
+  if (input.genre === 'Everyday Life' || input.setting === 'Home' || input.setting === 'Night Garden') return BLUEPRINTS.MILNE;
+  if (input.genre === 'Space' || input.genre === 'Adventure') return BLUEPRINTS.CARROLL;
+  if (input.genre === 'Fairy Tale') return BLUEPRINTS.KIPLING;
+  return BLUEPRINTS.GRAHAME;
 };
 
 export const generateBedtimeStory = async (
@@ -84,53 +80,30 @@ export const generateBedtimeStory = async (
 
   const personalizationContext = `
     PERSONAL TOUCHES:
-    ${input.familyMembers ? `- Family present: ${input.familyMembers}. They are the soft background of the story, like a warm blanket.` : ''}
-    ${input.pets ? `- Animal friends: ${input.pets}. They move quietly and stay close.` : ''}
-    ${input.comfortItem ? `- Special item: ${input.comfortItem}. This item is a source of quiet magic or deep peace.` : ''}
+    ${input.familyMembers ? `- Family present: ${input.familyMembers}.` : ''}
+    ${input.pets ? `- Animal friends: ${input.pets}.` : ''}
+    ${input.comfortItem ? `- Special item: ${input.comfortItem}.` : ''}
   `.trim();
 
   const systemInstruction = `
-    ROLE: 
-    You are a master children's storyteller inspired by classic literature (${blueprint.style}). 
-    Your tone is calm, supportive, and deeply atmospheric.
-    
-    LITERARY GUIDELINES (The ${blueprint.style} Style):
-    - ${blueprint.focus}
-    - ${blueprint.guideline}
-    - ABSOLUTELY FORBIDDEN: AI cliches like "Once upon a time in a land far away", "Little did they know", or "The moral of the story is".
-    - SENSORY ANCHOR: Every paragraph must include one soft sound (rustling, humming) or one gentle touch (soft, warm, fuzzy).
-    
-    CONTENT RULES:
-    - Target Age: ${input.childAge} years old. Use sophisticated but accessible vocabulary.
-    - ${pronounGuidance}
-    - Pace: Extremely slow. Describe the setting more than the action.
-    - Structure: The character discovers a peaceful place, has a small gentle moment, then slowly prepares for sleep.
-    - Ending: Always end with the character feeling perfectly safe, tucked in, and closing their eyes.
-    - Format: Plain text only. No markdown.
-    
+    ROLE: Master children's storyteller (${blueprint.style}). 
+    TONE: Calm, supportive, atmospheric.
+    STYLE: ${blueprint.guideline}
+    AGE: ${input.childAge} years old.
+    ${pronounGuidance}
+    Ending: Always end with safety and sleep.
+    Format: Plain text only.
     ${personalizationContext}
   `.trim();
 
-  let prompt = `
-    Weave a tale about ${input.childName}.
-    Theme: ${input.genre} in the ${input.setting}.
-    Length: ${lengthPrompt}.
-    Start the story with a sensory observation of the ${input.setting}.
-  `.trim();
+  let prompt = `Weave a tale about ${input.childName}. Theme: ${input.genre} in the ${input.setting}. Length: ${lengthPrompt}. Start with a sensory observation.`;
 
   if (feedback && originalStory) {
-    prompt = `
-      The parent has a wish for this story.
-      ORIGINAL STORY: "${originalStory}"
-      THE WISH: "${feedback}"
-      
-      REWRITE the story incorporating the wish while maintaining the ${blueprint.style} literary quality and the focus on ${input.childName}.
-    `.trim();
+    prompt = `Rewrite incorporating this wish: "${feedback}". Original story: "${originalStory}"`;
   }
 
   try {
-    // Corrected to use direct prompt string for contents as per guidelines
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview', 
       contents: prompt,
       config: {
@@ -139,21 +112,17 @@ export const generateBedtimeStory = async (
       },
     });
 
-    if (!response.text) {
-      throw new Error("The stars are too dim to read by. Try a different setting.");
-    }
-
+    if (!response.text) throw new Error("No response from the stars.");
     return response.text;
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error("The storyteller is dreaming of new ideas. Let's try again in a heartbeat.");
+    throw new Error(error.message || "The storyteller is resting.");
   }
 };
 
 export const generateStoryAudio = async (text: string, voice: string = 'Kore'): Promise<Uint8Array> => {
   const ai = getAI();
   try {
-    // Contents structure follows the TTS example in instructions
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
