@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Modality } from "@google/genai";
 import { StoryInput } from "../types";
 
 /**
@@ -51,7 +51,7 @@ export const generateBedtimeStory = async (
   feedback?: string, 
   originalStory?: string
 ): Promise<string> => {
-  // This string will be replaced by the actual key during the Vite build process.
+  // Vite will replace this entire expression with your API key string during build.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const blueprint = selectBlueprint(input);
   
@@ -105,7 +105,7 @@ export const generateBedtimeStory = async (
     return response.text;
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error("The storyteller is resting. Please try again in a moment.");
+    throw new Error("The storyteller is resting. Please check your network and try again.");
   }
 };
 
