@@ -4,6 +4,7 @@ export type StorySetting = string;
 export type StoryLength = 'short' | 'medium' | 'long';
 export type StoryVoice = 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
 export type ChildGender = 'boy' | 'girl' | 'neutral';
+export type StoryMode = 'STANDARD' | 'CALM_SUPPORT';
 
 export interface StoryInput {
   childName: string;
@@ -12,6 +13,7 @@ export interface StoryInput {
   genre: StoryGenre;
   setting: StorySetting;
   length: StoryLength;
+  mode: StoryMode;
   familyMembers?: string;
   pets?: string;
   comfortItem?: string;
@@ -73,5 +75,26 @@ export const VOICES: { id: StoryVoice; label: string; desc: string }[] = [
   { id: 'Fenrir', label: 'Fenrir', desc: 'Soft & Whispering' },
 ];
 
-export const DEFAULT_GENRES = ['Animals', 'Adventure', 'Fairy Tale', 'Space', 'Everyday Life', 'Mischief'];
-export const DEFAULT_SETTINGS = ['Home', 'Forest', 'Castle', 'City', 'Ocean', 'Farm', 'Night Garden'];
+export const DEFAULT_GENRES = [
+  'Animals', 
+  'Adventure', 
+  'Fairy Tale', 
+  'Space', 
+  'Everyday Life', 
+  'Mischief', 
+  'Rhyme & Rhythm', 
+  'Tiny Worlds', 
+  'Magic'
+];
+
+export const DEFAULT_SETTINGS = [
+  'Home', 
+  'Forest', 
+  'Castle', 
+  'City', 
+  'Ocean', 
+  'Farm', 
+  'Night Garden',
+  'Under the Bed',
+  'A Treehouse'
+];

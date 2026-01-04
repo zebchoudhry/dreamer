@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
-import { StoryInput, StoryResponse, StoryVoice, VOICES, DEFAULT_GENRES, DEFAULT_SETTINGS, SOUNDSCAPES, Soundscape } from './types';
+import { StoryInput, StoryResponse, StoryVoice, StoryMode, VOICES, DEFAULT_GENRES, DEFAULT_SETTINGS, SOUNDSCAPES, Soundscape } from './types';
 import { generateBedtimeStory, generateStoryAudio, decodeAudioData } from './services/geminiService';
 
 const App: React.FC = () => {
@@ -13,6 +13,7 @@ const App: React.FC = () => {
     genre: 'Animals',
     setting: 'Forest',
     length: 'short',
+    mode: 'STANDARD',
     familyMembers: '',
     pets: '',
     comfortItem: '',
@@ -109,7 +110,11 @@ const App: React.FC = () => {
 
   const handleGenerate = async (e?: React.FormEvent, isRefinement = false) => {
     if (e) e.preventDefault();
-    const finalInput = { ...input, genre: isCustomGenre ? customGenre : input.genre, setting: isCustomSetting ? customSetting : input.setting };
+    const finalInput = { 
+      ...input, 
+      genre: isCustomGenre ? customGenre : input.genre, 
+      setting: isCustomSetting ? customSetting : input.setting 
+    };
     
     if (!finalInput.childName || !finalInput.genre || !finalInput.setting) {
       setError("Please ensure all story details are filled in.");
@@ -243,6 +248,30 @@ const App: React.FC = () => {
         <div className="lg:col-span-4 space-y-6">
           <Card title="The Loom" subtitle="Set your story's threads">
             <form onSubmit={(e) => handleGenerate(e)} className="space-y-4">
+              {/* Mode Toggle */}
+              <div className="mb-6">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">Story Mode</label>
+                <div className="flex p-1 bg-slate-900/60 rounded-2xl border border-slate-700/50">
+                  <button
+                    type="button"
+                    onClick={() => setInput(prev => ({ ...prev, mode: 'STANDARD' }))}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${input.mode === 'STANDARD' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInput(prev => ({ ...prev, mode: 'CALM_SUPPORT' }))}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${input.mode === 'CALM_SUPPORT' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Calm Support
+                  </button>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-500 italic px-1">
+                  {input.mode === 'STANDARD' ? 'Gentle and descriptive for everyone.' : 'Autism-informed, literal, and low-stimulation.'}
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
@@ -404,6 +433,7 @@ const App: React.FC = () => {
               </Button>
             </form>
           </Card>
+          
           <div className="space-y-8 pt-4">
             <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.25em] mb-4 px-2 flex items-center gap-3">
               <div className="w-4 h-[1px] bg-indigo-500/30"></div>
@@ -425,7 +455,10 @@ const App: React.FC = () => {
                   >
                     <div className="flex justify-between items-start mb-1">
                       <p className="font-bold text-sm truncate">{story.input.childName}</p>
-                      <svg className="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
+                      <div className="flex items-center gap-2">
+                        {story.input.mode === 'CALM_SUPPORT' && <span className="text-[8px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/30 uppercase tracking-tighter">Support</span>}
+                        <svg className="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
+                      </div>
                     </div>
                     <p className="text-[10px] opacity-60 font-medium">{story.input.genre} • {story.input.setting}</p>
                   </button>
@@ -445,16 +478,16 @@ const App: React.FC = () => {
                   New Story
                 </Button>
               </div>
-              <Card className="relative overflow-visible shadow-2xl border-slate-700/50 transition-all duration-500">
+              <Card className={`relative overflow-visible shadow-2xl transition-all duration-500 border-slate-700/50`}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                   <div className="flex items-center gap-6">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 text-[9px] font-bold uppercase tracking-[0.2em] border border-indigo-500/20">
-                          {currentStory.input.genre}
+                        <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-[0.2em] border ${currentStory.input.mode === 'CALM_SUPPORT' ? 'bg-teal-500/10 border-teal-500/20 text-teal-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'}`}>
+                          {currentStory.input.mode}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-md bg-slate-700/30 text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em] border border-slate-700/50">
-                          {currentStory.input.setting}
+                          {currentStory.input.genre}
                         </span>
                       </div>
                       <h2 className="text-3xl md:text-5xl font-bold text-slate-100 tracking-tight">{currentStory.input.childName}'s Tale</h2>
