@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { StoryInput } from "../types";
 
 export const generateBedtimeStory = async (
@@ -129,7 +129,7 @@ export const generateStoryAudio = async (text: string, voice: string = 'Kore'): 
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
       config: {
-        responseModalities: [Modality.AUDIO],
+        responseModalities: ['AUDIO'], // Use string literal for maximum compatibility
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName: voice },
@@ -164,7 +164,15 @@ export async function decodeAudioData(
   sampleRate: number = 24000,
   numChannels: number = 1,
 ): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
+  // Ensure we have an even number of bytes for 16-bit PCM.
+  // If the data length is odd, Int16Array creation will fail.
+  let alignedData = data;
+  if (data.byteLength % 2 !== 0) {
+    alignedData = data.slice(0, data.byteLength - 1);
+  }
+
+  // Use explicit buffer, offset, and length to be safe
+  const dataInt16 = new Int16Array(alignedData.buffer, alignedData.byteOffset, alignedData.byteLength / 2);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 

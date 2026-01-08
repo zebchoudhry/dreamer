@@ -203,6 +203,7 @@ const App: React.FC = () => {
       setIsReading(true);
       source.start();
     } catch (err) {
+      console.error("Read Aloud Failed:", err);
       setIsAudioLoading(false);
       setError("The storyteller is resting. Let's read it together.");
     }
