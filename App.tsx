@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
+import { LandingPage } from './components/LandingPage';
 import { StoryInput, StoryResponse, StoryVoice, StoryMode, VOICES, DEFAULT_GENRES, DEFAULT_SETTINGS, SOUNDSCAPES, Soundscape } from './types';
 import { generateBedtimeStory, generateStoryAudio, decodeAudioData } from './services/geminiService';
 
 const App: React.FC = () => {
+  const [view, setView] = useState<'landing' | 'app'>('landing');
   const [input, setInput] = useState<StoryInput>({
     childName: '',
     childAge: 4,
@@ -47,6 +48,9 @@ const App: React.FC = () => {
 
   // Persistence
   useEffect(() => {
+    const savedView = localStorage.getItem('dreamweaver_view') as 'landing' | 'app';
+    if (savedView) setView(savedView);
+
     const savedHist = localStorage.getItem('dreamweaver_history');
     if (savedHist) try { setHistory(JSON.parse(savedHist)); } catch (e) {}
     const savedLib = localStorage.getItem('dreamweaver_library');
@@ -59,6 +63,10 @@ const App: React.FC = () => {
     const savedVol = localStorage.getItem('dreamweaver_vol');
     if (savedVol) setAtmosphereVolume(parseFloat(savedVol));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('dreamweaver_view', view);
+  }, [view]);
 
   useEffect(() => {
     localStorage.setItem('dreamweaver_history', JSON.stringify(history.slice(0, 10)));
@@ -222,6 +230,10 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (view === 'landing') {
+    return <LandingPage onStart={() => setView('app')} />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 relative">
       {toast && (
@@ -237,11 +249,16 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <header className="text-center mb-12 animate-in fade-in duration-1000">
-        <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 mb-2 drop-shadow-sm">
-          Dreamweaver
-        </h1>
-        <p className="text-slate-400 text-lg font-light tracking-wide italic">"Where every word is a gentle hug"</p>
+      <header className="flex justify-between items-center mb-12 animate-in fade-in duration-1000">
+        <button 
+          onClick={() => setView('landing')}
+          className="text-left group"
+        >
+          <h1 className="text-2xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 drop-shadow-sm group-hover:opacity-80 transition-opacity">
+            Dreamweaver
+          </h1>
+          <p className="text-slate-500 text-[10px] uppercase tracking-widest mt-1">Return to home</p>
+        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -321,44 +338,19 @@ const App: React.FC = () => {
                   <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                   Heart & Home
                 </h4>
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">
-                    <span>👨‍👩‍👧‍👦</span> Who is at home?
-                  </label>
-                  <input
-                    type="text"
-                    name="familyMembers"
-                    value={input.familyMembers}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Mum and Dad"
-                    className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl px-4 py-2 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none text-sm placeholder:text-slate-600"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">
-                    <span>🐾</span> Animal Friends?
-                  </label>
-                  <input
-                    type="text"
-                    name="pets"
-                    value={input.pets}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Barnaby the cat"
-                    className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl px-4 py-2 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none text-sm placeholder:text-slate-600"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">
-                    <span>🧸</span> Special Toy?
-                  </label>
-                  <input
-                    type="text"
-                    name="comfortItem"
-                    value={input.comfortItem}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Blue Bunny"
-                    className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl px-4 py-2 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none text-sm placeholder:text-slate-600"
-                  />
+                <p className="text-[10px] text-slate-600 italic px-1 mb-2">Available for Supporter members</p>
+                <div className="opacity-40 pointer-events-none">
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">
+                      <span>👨‍👩‍👧‍👦</span> Who is at home?
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      placeholder="Supporter only"
+                      className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl px-4 py-2 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none text-sm placeholder:text-slate-600"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="pt-4 space-y-4">
