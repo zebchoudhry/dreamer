@@ -6,6 +6,11 @@ export const generateBedtimeStory = async (
   feedback?: string, 
   originalStory?: string
 ): Promise<string> => {
+  // Debug check (will not log full key in production for security, just presence)
+  if (!process.env.API_KEY) {
+    throw new Error("API Key is missing. Please check your app settings.");
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const lengthPrompt = input.length === 'short' 
@@ -106,7 +111,7 @@ export const generateBedtimeStory = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', 
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: {
         systemInstruction,
@@ -114,15 +119,20 @@ export const generateBedtimeStory = async (
       },
     });
 
-    if (!response.text) throw new Error("The storyteller is dreaming.");
+    if (!response.text) throw new Error("The storyteller is dreaming (No text generated).");
     return response.text.trim();
   } catch (error: any) {
     console.error("Error generating story:", error);
-    throw new Error("The storyteller is resting. Please try again in a moment.");
+    // Pass the actual error message to the UI for debugging
+    throw new Error(error.message || "The storyteller is resting. Please try again in a moment.");
   }
 };
 
 export const generateStoryAudio = async (text: string, voice: string = 'Kore'): Promise<Uint8Array> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API Key is missing.");
+  }
+  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -139,12 +149,12 @@ export const generateStoryAudio = async (text: string, voice: string = 'Kore'): 
     });
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) throw new Error("No audio data returned.");
+    if (!base64Audio) throw new Error("No audio data returned from the API.");
 
     return decodeBase64(base64Audio);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating audio:", error);
-    throw error;
+    throw new Error(error.message || "Could not generate audio.");
   }
 };
 

@@ -48,6 +48,11 @@ const App: React.FC = () => {
 
   // Persistence
   useEffect(() => {
+    // Check for API Key on mount
+    if (!process.env.API_KEY || process.env.API_KEY.length === 0) {
+      setError("Setup Issue: No API Key found. Please add API_KEY to your Vercel Environment Variables and Redeploy.");
+    }
+
     const savedView = localStorage.getItem('dreamweaver_view') as 'landing' | 'app';
     if (savedView) setView(savedView);
 
@@ -156,7 +161,7 @@ const App: React.FC = () => {
         setToast({ message: "Dream refined successfully ✨", type: 'success' });
       }
     } catch (err: any) { 
-      setError(err.message || "The stars are hidden behind clouds. Let's try again in a moment."); 
+      setError(err.message); 
     } finally { 
       setIsGenerating(false); 
     }
@@ -202,10 +207,10 @@ const App: React.FC = () => {
       setIsAudioLoading(false);
       setIsReading(true);
       source.start();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Read Aloud Failed:", err);
       setIsAudioLoading(false);
-      setError("The storyteller is resting. Let's read it together.");
+      setError(err.message || "The storyteller is resting. Let's read it together.");
     }
   };
 
