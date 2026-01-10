@@ -48,9 +48,13 @@ const App: React.FC = () => {
 
   // Persistence
   useEffect(() => {
-    // Check for API Key on mount
-    if (!process.env.API_KEY || process.env.API_KEY.length === 0) {
-      setError("Setup Issue: No API Key found. Please add API_KEY to your Vercel Environment Variables and Redeploy.");
+    const isProduction = window.location.hostname !== 'localhost';
+    if (!process.env.API_KEY) {
+      const msg = isProduction 
+        ? "Warning: No API key detected. Please add API_KEY to Vercel and Redeploy." 
+        : "Warning: No API key found in .env file.";
+      console.warn(msg);
+      // We don't block the UI immediately, but keep it for error messages
     }
 
     const savedView = localStorage.getItem('dreamweaver_view') as 'landing' | 'app';
@@ -105,7 +109,7 @@ const App: React.FC = () => {
     }
     const targetVolume = isReading ? atmosphereVolume * 0.3 : atmosphereVolume;
     ambientAudioRef.current.volume = targetVolume;
-    ambientAudioRef.current.play().catch(e => console.log("Audio play blocked", e));
+    ambientAudioRef.current.play().catch(e => console.log("Ambient Audio Play Blocked", e));
   }, [isAtmosphereEnabled, selectedSoundscape, isReading, atmosphereVolume]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -130,7 +134,7 @@ const App: React.FC = () => {
     };
     
     if (!finalInput.childName || !finalInput.genre || !finalInput.setting) {
-      setError("Please ensure all story details are filled in.");
+      setError("Please fill in the child's name, genre, and setting.");
       return;
     }
 
@@ -158,10 +162,10 @@ const App: React.FC = () => {
       if (isRefinement) {
         setShowTweakPanel(false);
         setTweakText('');
-        setToast({ message: "Dream refined successfully ✨", type: 'success' });
+        setToast({ message: "Story refined successfully ✨", type: 'success' });
       }
     } catch (err: any) { 
-      setError(err.message); 
+      setError(`Storytelling error: ${err.message}`); 
     } finally { 
       setIsGenerating(false); 
     }
@@ -192,25 +196,38 @@ const App: React.FC = () => {
   const handleReadAloud = async () => {
     if (isReading || isAudioLoading) { stopReading(); return; }
     if (!currentStory) return;
+    
     setIsAudioLoading(true);
     setError(null);
+    
     try {
-      if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      }
+      
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       const pcmData = await generateStoryAudio(currentStory.content, selectedVoice);
       const audioBuffer = await decodeAudioData(pcmData, audioContextRef.current);
+      
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContextRef.current.destination);
-      source.onended = () => { setIsReading(false); audioSourceRef.current = null; };
+      source.onended = () => { 
+        setIsReading(false); 
+        audioSourceRef.current = null; 
+      };
+      
       audioSourceRef.current = source;
       setIsAudioLoading(false);
       setIsReading(true);
       source.start();
     } catch (err: any) {
-      console.error("Read Aloud Failed:", err);
+      console.error("Audio Processing Failed:", err);
       setIsAudioLoading(false);
-      setError(err.message || "The storyteller is resting. Let's read it together.");
+      setError(`Voice error: ${err.message}`);
     }
   };
 
@@ -224,7 +241,7 @@ const App: React.FC = () => {
         }, 100);
       }
     } else {
-      setToast({ message: "Thank you! Your feedback helps the stars shine brighter.", type: 'info' });
+      setToast({ message: "Thank you for the feedback!", type: 'info' });
     }
   };
 
@@ -271,7 +288,6 @@ const App: React.FC = () => {
         <div className="lg:col-span-4 space-y-6">
           <Card title="The Loom" subtitle="Set your story's threads">
             <form onSubmit={(e) => handleGenerate(e)} className="space-y-4">
-              {/* Mode Toggle */}
               <div className="mb-6">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">Story Mode</label>
                 <div className="flex p-1 bg-slate-900/60 rounded-2xl border border-slate-700/50">
@@ -290,9 +306,6 @@ const App: React.FC = () => {
                     Calm Support
                   </button>
                 </div>
-                <p className="mt-2 text-[10px] text-slate-500 italic px-1">
-                  {input.mode === 'STANDARD' ? 'Gentle and descriptive for everyone.' : 'Autism-informed, literal, and low-stimulation.'}
-                </p>
               </div>
 
               <div className="space-y-4">
@@ -339,26 +352,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="pt-4 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                  Heart & Home
-                </h4>
-                <p className="text-[10px] text-slate-600 italic px-1 mb-2">Available for Supporter members</p>
-                <div className="opacity-40 pointer-events-none">
-                  <div>
-                    <label className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">
-                      <span>👨‍👩‍👧‍👦</span> Who is at home?
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      placeholder="Supporter only"
-                      className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl px-4 py-2 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none text-sm placeholder:text-slate-600"
-                    />
-                  </div>
-                </div>
-              </div>
+
               <div className="pt-4 space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
@@ -438,7 +432,7 @@ const App: React.FC = () => {
               The Library
             </h3>
             {savedStories.length === 0 ? (
-              <p className="text-[10px] text-slate-600 italic px-4 py-2">Heart a story to save it here forever...</p>
+              <p className="text-[10px] text-slate-600 italic px-4 py-2">Heart a story to save it...</p>
             ) : (
               <div className="space-y-2.5">
                 {savedStories.map(story => (
@@ -453,12 +447,9 @@ const App: React.FC = () => {
                   >
                     <div className="flex justify-between items-start mb-1">
                       <p className="font-bold text-sm truncate">{story.input.childName}</p>
-                      <div className="flex items-center gap-2">
-                        {story.input.mode === 'CALM_SUPPORT' && <span className="text-[8px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/30 uppercase tracking-tighter">Support</span>}
-                        <svg className="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
-                      </div>
+                      <svg className="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
                     </div>
-                    <p className="text-[10px] opacity-60 font-medium">{story.input.genre} • {story.input.setting}</p>
+                    <p className="text-[10px] opacity-60">{story.input.genre} • {story.input.setting}</p>
                   </button>
                 ))}
               </div>
@@ -467,7 +458,8 @@ const App: React.FC = () => {
         </div>
 
         <div className="lg:col-span-8">
-          {error && <div className="mb-6 bg-rose-900/30 border border-rose-500/50 text-rose-200 p-5 rounded-2xl text-sm italic animate-in fade-in zoom-in-95">{error}</div>}
+          {error && <div className="mb-6 bg-rose-900/30 border border-rose-500/50 text-rose-200 p-5 rounded-2xl text-sm italic animate-in fade-in zoom-in-95 shadow-xl">{error}</div>}
+          
           {currentStory ? (
             <div className="space-y-8 animate-in zoom-in-95 duration-700">
               <div className="flex justify-start">
@@ -476,16 +468,14 @@ const App: React.FC = () => {
                   New Story
                 </Button>
               </div>
-              <Card className={`relative overflow-visible shadow-2xl transition-all duration-500 border-slate-700/50`}>
+              
+              <Card className="relative overflow-visible shadow-2xl transition-all duration-500 border-slate-700/50">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                   <div className="flex items-center gap-6">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-[0.2em] border ${currentStory.input.mode === 'CALM_SUPPORT' ? 'bg-teal-500/10 border-teal-500/20 text-teal-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'}`}>
                           {currentStory.input.mode}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-slate-700/30 text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em] border border-slate-700/50">
-                          {currentStory.input.genre}
                         </span>
                       </div>
                       <h2 className="text-3xl md:text-5xl font-bold text-slate-100 tracking-tight">{currentStory.input.childName}'s Tale</h2>
@@ -503,27 +493,27 @@ const App: React.FC = () => {
                       </svg>
                     </button>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto bg-slate-900/60 p-4 rounded-[2rem] border border-slate-700/50 shadow-inner backdrop-blur-xl">
-                    <div className="flex items-center gap-4 w-full">
-                      <select
-                        value={selectedVoice}
-                        onChange={(e) => { setSelectedVoice(e.target.value as StoryVoice); stopReading(); }}
-                        className="bg-transparent text-sm text-slate-400 hover:text-indigo-300 outline-none cursor-pointer pr-4 font-bold transition-colors"
-                      >
-                        {VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-                      </select>
-                      <Button 
-                        variant={isReading ? 'danger' : 'primary'}
-                        size="md" 
-                        onClick={handleReadAloud}
-                        isLoading={isAudioLoading}
-                        className={`flex-1 min-w-[130px] rounded-2xl shadow-xl ${isReading ? 'animate-pulse' : ''}`}
-                      >
-                        {isReading ? 'Stop Reading' : 'Read Aloud'}
-                      </Button>
-                    </div>
+                  
+                  <div className="flex items-center gap-4 w-full md:w-auto bg-slate-900/60 p-4 rounded-[2rem] border border-slate-700/50 shadow-inner backdrop-blur-xl">
+                    <select
+                      value={selectedVoice}
+                      onChange={(e) => { setSelectedVoice(e.target.value as StoryVoice); stopReading(); }}
+                      className="bg-transparent text-sm text-slate-400 hover:text-indigo-300 outline-none cursor-pointer pr-4 font-bold transition-colors"
+                    >
+                      {VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+                    </select>
+                    <Button 
+                      variant={isReading ? 'danger' : 'primary'}
+                      size="md" 
+                      onClick={handleReadAloud}
+                      isLoading={isAudioLoading}
+                      className={`flex-1 min-w-[130px] rounded-2xl shadow-xl ${isReading ? 'animate-pulse' : ''}`}
+                    >
+                      {isReading ? 'Stop' : 'Read Aloud'}
+                    </Button>
                   </div>
                 </div>
+
                 <div className="mb-10 p-5 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col md:flex-row items-center gap-6">
                   <div className="flex items-center gap-4 min-w-[140px]">
                     <button 
@@ -546,108 +536,84 @@ const App: React.FC = () => {
                       <button
                         key={s.id}
                         onClick={() => { setSelectedSoundscape(s); if (!isAtmosphereEnabled) setIsAtmosphereEnabled(true); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
+                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
                           selectedSoundscape.id === s.id && isAtmosphereEnabled
                           ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-100' 
-                          : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:text-slate-200 hover:bg-slate-700/40'
+                          : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:text-slate-200'
                         }`}
                       >
-                        <span>{s.icon}</span>
-                        <span>{s.label}</span>
+                        {s.icon} {s.label}
                       </button>
                     ))}
                   </div>
-                  <div className="flex flex-col gap-2 min-w-[120px]">
-                    <input 
-                      type="range" 
-                      min="0" max="1" step="0.01" 
-                      value={atmosphereVolume} 
-                      onChange={(e) => setAtmosphereVolume(parseFloat(e.target.value))}
-                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-400"
-                    />
-                  </div>
                 </div>
+
                 <div className="story-text text-xl md:text-2xl text-slate-200 whitespace-pre-wrap leading-loose italic border-l-4 border-indigo-500/20 pl-10 md:pl-14 py-6 mb-12 drop-shadow-sm">
                   {currentStory.content}
                 </div>
+
                 <div className="space-y-12 mt-20 border-t border-slate-700/30 pt-12">
-                  <div className="text-center space-y-2">
-                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">Reflection</h3>
+                  <div className="text-center">
                     <p className="text-2xl font-bold text-slate-100 tracking-tight italic">How was tonight's dream?</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onClick={() => handleReaction('magical')} className="group p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10 hover:border-indigo-400/50 hover:bg-indigo-500/10 transition-all text-left flex flex-col gap-3 shadow-sm">
+                    <button onClick={() => handleReaction('magical')} className="p-6 rounded-[2rem] bg-indigo-500/5 border border-indigo-500/10 hover:bg-indigo-500/10 transition-all text-left flex flex-col gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-xl">✨</div>
                       <div>
                         <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Magical</h4>
-                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Perfect rhythm for our night.</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Perfect for our night.</p>
                       </div>
                     </button>
-                    <button onClick={() => handleReaction('sleepy')} className="group p-6 rounded-[2rem] bg-purple-500/5 border border-purple-500/10 hover:border-purple-400/50 hover:bg-purple-500/10 transition-all text-left flex flex-col gap-3 shadow-sm">
+                    <button onClick={() => handleReaction('sleepy')} className="p-6 rounded-[2rem] bg-purple-500/5 border border-purple-500/10 hover:bg-purple-500/10 transition-all text-left flex flex-col gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-purple-500/20 flex items-center justify-center text-xl">😴</div>
                       <div>
                         <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Sleepy</h4>
-                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Gentle enough to lull a sleepyhead.</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Lulled them right to sleep.</p>
                       </div>
                     </button>
-                    <button onClick={() => handleReaction('tweak')} className={`group p-6 rounded-[2rem] transition-all text-left flex flex-col gap-3 shadow-sm border ${showTweakPanel ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/5 border-slate-700 hover:border-slate-500'}`}>
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl ${showTweakPanel ? 'bg-amber-500/30 text-amber-100 animate-spin-slow' : 'bg-slate-700/30 text-slate-400'}`}>🛠️</div>
+                    <button onClick={() => handleReaction('tweak')} className={`p-6 rounded-[2rem] transition-all text-left flex flex-col gap-3 border ${showTweakPanel ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/5 border-slate-700'}`}>
+                      <div className="w-10 h-10 rounded-2xl bg-slate-700/30 flex items-center justify-center text-xl">🛠️</div>
                       <div>
-                        <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Tweak Threads</h4>
-                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Adjust a detail or change the ending.</p>
+                        <h4 className="font-bold text-slate-100 text-sm uppercase tracking-wider">Tweak</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Adjust a few threads.</p>
                       </div>
                     </button>
                   </div>
+
                   {showTweakPanel && (
                     <div id="tweak-panel" className="p-8 bg-indigo-500/5 border border-indigo-500/20 rounded-[2.5rem] animate-in slide-in-from-top-6">
-                      <div className="flex flex-col gap-6">
-                        <textarea
-                          value={tweakText}
-                          onChange={(e) => setTweakText(e.target.value)}
-                          placeholder="Tell us your wish..."
-                          className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-6 py-5 text-slate-100 outline-none transition-all placeholder:text-slate-600 min-h-[120px] text-lg resize-none italic"
-                        />
-                        <div className="flex justify-end gap-4">
-                          <button onClick={() => { setShowTweakPanel(false); setTweakText(''); }} className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors px-4">Close</button>
-                          <Button variant="primary" size="md" onClick={() => handleGenerate(undefined, true)} isLoading={isGenerating} disabled={!tweakText.trim()}>Polish the Tale</Button>
-                        </div>
+                      <textarea
+                        value={tweakText}
+                        onChange={(e) => setTweakText(e.target.value)}
+                        placeholder="What would you like to change?"
+                        className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-6 py-5 text-slate-100 outline-none min-h-[120px] text-lg resize-none italic mb-4"
+                      />
+                      <div className="flex justify-end gap-4">
+                        <Button variant="primary" size="md" onClick={() => handleGenerate(undefined, true)} isLoading={isGenerating} disabled={!tweakText.trim()}>Polish Tale</Button>
                       </div>
                     </div>
                   )}
                 </div>
-                <div className="mt-20 pt-10 border-t border-slate-700/30 flex items-center justify-between">
-                  <span className="font-semibold italic text-indigo-300/60 text-lg">Goodnight, {currentStory.input.childName}...</span>
-                  <div className="flex items-center gap-3 pr-4">
-                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-500/40 animate-pulse [animation-delay:0.3s]"></div>
-                  </div>
-                </div>
               </Card>
             </div>
           ) : (
-            <div className="h-full min-h-[650px] flex flex-col items-center justify-center text-center px-10 border-2 border-dashed border-slate-700/30 rounded-[3rem] bg-slate-800/5 backdrop-blur-sm transition-all hover:bg-slate-800/15 group">
+            <div className="h-full min-h-[650px] flex flex-col items-center justify-center text-center px-10 border-2 border-dashed border-slate-700/30 rounded-[3rem] bg-slate-800/5 backdrop-blur-sm">
               {isGenerating ? (
                 <div className="space-y-10 animate-in fade-in duration-700">
                   <div className="relative w-40 h-40 mx-auto">
                     <div className="absolute inset-0 border-[8px] border-indigo-500/5 rounded-full"></div>
                     <div className="absolute inset-0 border-[8px] border-t-indigo-400/80 rounded-full animate-spin"></div>
-                    <div className="absolute inset-0 m-auto w-14 h-14 text-indigo-300 animate-pulse flex items-center justify-center">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                    </div>
                   </div>
-                  <div className="space-y-4">
-                    <h3 className="text-3xl font-bold text-indigo-200 tracking-tight">Warping the Loom...</h3>
-                    <p className="text-slate-500 italic max-w-sm mx-auto font-medium text-lg leading-relaxed">Gathering starlight to weave a story just for {input.childName || "a precious one"}.</p>
-                  </div>
+                  <h3 className="text-3xl font-bold text-indigo-200">Warping the Loom...</h3>
                 </div>
               ) : (
                 <div className="space-y-10 max-w-xl animate-in fade-in slide-in-from-bottom-10 duration-1000">
-                  <div className="w-32 h-32 bg-gradient-to-br from-indigo-500/15 via-purple-500/5 rounded-full flex items-center justify-center mx-auto border border-indigo-500/20 shadow-2xl">
+                  <div className="w-32 h-32 bg-indigo-500/15 rounded-full flex items-center justify-center mx-auto border border-indigo-500/20">
                     <svg className="w-16 h-16 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
                   <div className="space-y-5">
-                    <h3 className="text-4xl font-bold text-slate-100 mb-4 tracking-tight">A Story Awaits</h3>
-                    <p className="text-slate-400 text-xl leading-relaxed px-6 font-light italic">"Tucked in tight and watching the moon, your special story will start very soon."</p>
+                    <h3 className="text-4xl font-bold text-slate-100 tracking-tight">A Story Awaits</h3>
+                    <p className="text-slate-400 text-xl leading-relaxed italic">"Tucked in tight and watching the moon, your special story will start very soon."</p>
                   </div>
                 </div>
               )}
@@ -656,7 +622,7 @@ const App: React.FC = () => {
         </div>
       </div>
       <footer className="mt-32 text-center text-slate-600 text-[9px] tracking-[0.4em] uppercase font-black opacity-40 pb-12 border-t border-slate-800/40 pt-12">
-        <p>© Dreamweaver • Handcrafted Lullabies for Small Dreamers</p>
+        <p>© Dreamweaver • Handcrafted for Small Dreamers</p>
       </footer>
     </div>
   );
