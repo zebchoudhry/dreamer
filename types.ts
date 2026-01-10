@@ -15,6 +15,7 @@ export interface StoryInput {
   length: StoryLength;
   mode: StoryMode;
   familyMembers?: string;
+  siblings?: string;
   pets?: string;
   comfortItem?: string;
 }
