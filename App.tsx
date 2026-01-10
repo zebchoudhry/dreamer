@@ -51,10 +51,9 @@ const App: React.FC = () => {
     const isProduction = window.location.hostname !== 'localhost';
     if (!process.env.API_KEY) {
       const msg = isProduction 
-        ? "Warning: No API key detected. Please add API_KEY to Vercel and Redeploy." 
-        : "Warning: No API key found in .env file.";
+        ? "Setup: Ensure API_KEY is set in Vercel Environment Variables and a new deployment is triggered." 
+        : "Warning: No API key found in your environment.";
       console.warn(msg);
-      // We don't block the UI immediately, but keep it for error messages
     }
 
     const savedView = localStorage.getItem('dreamweaver_view') as 'landing' | 'app';
@@ -134,7 +133,7 @@ const App: React.FC = () => {
     };
     
     if (!finalInput.childName || !finalInput.genre || !finalInput.setting) {
-      setError("Please fill in the child's name, genre, and setting.");
+      setError("Please ensure the child's name, genre, and setting are filled in.");
       return;
     }
 
@@ -162,7 +161,7 @@ const App: React.FC = () => {
       if (isRefinement) {
         setShowTweakPanel(false);
         setTweakText('');
-        setToast({ message: "Story refined successfully ✨", type: 'success' });
+        setToast({ message: "Story refined ✨", type: 'success' });
       }
     } catch (err: any) { 
       setError(`Storytelling error: ${err.message}`); 
@@ -349,6 +348,49 @@ const App: React.FC = () => {
                       <option value="boy">Boy</option>
                       <option value="neutral">Neutral</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Heart & Home (Unlocked for testing) */}
+              <div className="pt-4 space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  Heart & Home
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">Family Members</label>
+                    <input
+                      type="text"
+                      name="familyMembers"
+                      value={input.familyMembers}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Mum, Dad, Sister"
+                      className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">Pets</label>
+                    <input
+                      type="text"
+                      name="pets"
+                      value={input.pets}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Toby the dog"
+                      className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">Comfort Item</label>
+                    <input
+                      type="text"
+                      name="comfortItem"
+                      value={input.comfortItem}
+                      onChange={handleInputChange}
+                      placeholder="e.g. blue teddy bear"
+                      className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
+                    />
                   </div>
                 </div>
               </div>
