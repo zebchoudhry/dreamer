@@ -24,40 +24,52 @@ export const generateBedtimeStory = async (
     ? 'Use female pronouns (she/her).' 
     : 'Use gender-neutral pronouns (they/them).';
 
-  const familyContext = `
-    Optional family context (Mention ONLY if provided):
-    - Parents: ${input.familyMembers || 'None'}
+  const personalizationContext = `
+    PERSONALISATION (MANDATORY INCLUSION):
+    - Family Members: ${input.familyMembers || 'None'}
     - Pets: ${input.pets || 'None'}
-    - Comfort toy: ${input.comfortItem || 'None'}
+    - Comfort toy/item: ${input.comfortItem || 'None'}
+    
+    INSTRUCTIONS: 
+    1. If family members are listed, weave them into the story as safe, loving figures nearby or part of the journey. 
+    2. If pets are mentioned, include them as gentle companions. 
+    3. If a comfort toy is mentioned, describe it as being held close or present for comfort.
+    These details are grounding threads to make the story feel deeply safe and personal.
   `.trim();
 
   const standardBlueprints = `
-    In STANDARD mode, masterfully blend these literary blueprints:
-    1. THE SEUSS BLUEPRINT: Rhythmic, musical cadence.
-    2. THE CARLE BLUEPRINT: Focus on concrete textures.
-    3. THE POTTER BLUEPRINT: Cozy, domestic miniatures.
-    4. THE MILNE BLUEPRINT: Quiet, philosophical friendship.
-    5. THE WISE BROWN BLUEPRINT: Ritual of naming and noticing.
+    LITERARY BLUEPRINTS:
+    1. THE POTTER BLUEPRINT: Cozy, domestic miniatures and safe small worlds.
+    2. THE MILNE BLUEPRINT: Quiet, philosophical friendship and slow walking.
+    3. THE WISE BROWN BLUEPRINT: Ritual of naming objects and noticing the world slowing down.
   `;
 
   const modeInstructions = input.mode === 'CALM_SUPPORT' ? `
-    MODE: CALM_SUPPORT (Autism-informed, low-stimulation)
-    - LANGUAGE: Literal ONLY. NO metaphors, NO idioms.
-    - STRUCTURE: Highly predictable. No surprises.
-    - ENDING: Explicit transition to sleep.
+    MODE: CALM_SUPPORT (Low-stimulation)
+    - LANGUAGE: Literal and concrete. NO metaphors or abstract imagery.
+    - STRUCTURE: Predictable and rhythmic. No sudden changes or surprises.
+    - ENDING: Rhythmic focus on breathing and the body resting in bed.
   ` : `
-    MODE: STANDARD (General gentle story)
+    MODE: STANDARD (Gentle and descriptive)
     ${standardBlueprints}
   `;
 
   const systemInstruction = `
-    ROLE: Calm Bedtime Story Generator.
-    PURPOSE: Reduce bedtime pressure. Soothing, predictable experience.
-    RULES: No conflict, no questions to listener, simple language.
-    STRUCTURE: 1. Intro 2. Safe experience 3. Resolution 4. Signal sleep.
+    ROLE: A supportive, calm Bedtime Story Assistant.
+    PURPOSE: Reduce bedtime anxiety through soothing narrative.
+    RULES: No conflict, no villains, no questions to the listener, simple comforting language.
+    
+    ${personalizationContext}
+    
     ${modeInstructions}
+    
+    STRUCTURE:
+    1. Introduction to ${input.childName}'s safe world.
+    2. A gentle moment of discovery or wonder.
+    3. Weaving in the family/pets/toys as sources of safety.
+    4. A slow, fading transition to deep sleep.
+    
     PRONOUNS: ${pronounGuidance}
-    ${familyContext}
   `.trim();
 
   let prompt = `Write a ${input.mode} story for ${input.childName}. 
@@ -67,7 +79,7 @@ export const generateBedtimeStory = async (
     Output plain text only.`;
 
   if (feedback && originalStory) {
-    prompt = `Refine this story: "${feedback}". Original story: "${originalStory}"`;
+    prompt = `Refine this story: "${feedback}". Keep the calm tone and all personalization details. Original story: "${originalStory}"`;
   }
 
   try {
@@ -80,7 +92,7 @@ export const generateBedtimeStory = async (
       },
     });
 
-    if (!response.text) throw new Error("No text content received from the storyteller.");
+    if (!response.text) throw new Error("The storyteller is quiet. Please try again.");
     return response.text.trim();
   } catch (error: any) {
     console.error("Story Generation Error:", error);
@@ -90,7 +102,7 @@ export const generateBedtimeStory = async (
 
 export const generateStoryAudio = async (text: string, voice: string = 'Kore'): Promise<Uint8Array> => {
   if (!process.env.API_KEY) {
-    throw new Error("Voice feature requires an API key to be set in environment variables.");
+    throw new Error("Voice feature requires an API key.");
   }
   
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -108,7 +120,6 @@ export const generateStoryAudio = async (text: string, voice: string = 'Kore'): 
       },
     });
 
-    // Safely extract audio data from parts
     let base64Audio: string | undefined;
     const candidate = response.candidates?.[0];
     if (candidate?.content?.parts) {
@@ -120,32 +131,21 @@ export const generateStoryAudio = async (text: string, voice: string = 'Kore'): 
       }
     }
 
-    if (!base64Audio) {
-      throw new Error("The API returned a successful response, but no audio data was found in the message.");
-    }
-
+    if (!base64Audio) throw new Error("No audio was created.");
     return decodeBase64(base64Audio);
   } catch (error: any) {
-    console.error("TTS Generation Error:", error);
-    // Provide specific guidance for common errors
-    if (error.message?.includes('403')) throw new Error("API Key permissions issue. Check if TTS model is enabled.");
-    if (error.message?.includes('429')) throw new Error("Quota exceeded. Please try again in a minute.");
-    throw new Error(error.message || "Failed to weave the audio threads.");
+    console.error("TTS Error:", error);
+    throw new Error(error.message || "Failed to weave the audio.");
   }
 };
 
 function decodeBase64(base64: string): Uint8Array {
-  try {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    throw new Error("Failed to decode the voice data.");
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
+  return bytes;
 }
 
 export async function decodeAudioData(
@@ -155,10 +155,7 @@ export async function decodeAudioData(
   numChannels: number = 1,
 ): Promise<AudioBuffer> {
   let alignedData = data;
-  if (data.byteLength % 2 !== 0) {
-    alignedData = data.slice(0, data.byteLength - 1);
-  }
-
+  if (data.byteLength % 2 !== 0) alignedData = data.slice(0, data.byteLength - 1);
   const dataInt16 = new Int16Array(alignedData.buffer, alignedData.byteOffset, alignedData.byteLength / 2);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);

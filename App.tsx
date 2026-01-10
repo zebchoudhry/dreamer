@@ -50,10 +50,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const isProduction = window.location.hostname !== 'localhost';
     if (!process.env.API_KEY) {
-      const msg = isProduction 
-        ? "Setup: Ensure API_KEY is set in Vercel Environment Variables and a new deployment is triggered." 
-        : "Warning: No API key found in your environment.";
-      console.warn(msg);
+      console.warn("API Key is missing from the environment.");
     }
 
     const savedView = localStorage.getItem('dreamweaver_view') as 'landing' | 'app';
@@ -354,9 +351,9 @@ const App: React.FC = () => {
 
               {/* Heart & Home (Unlocked for testing) */}
               <div className="pt-4 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 mb-2 flex items-center gap-2">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-purple-400 mb-2 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                  Heart & Home
+                  Personal Touches
                 </h4>
                 <div className="space-y-4">
                   <div>
@@ -366,7 +363,7 @@ const App: React.FC = () => {
                       name="familyMembers"
                       value={input.familyMembers}
                       onChange={handleInputChange}
-                      placeholder="e.g. Mum, Dad, Sister"
+                      placeholder="e.g. Mummy, Daddy, Sam"
                       className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
                     />
                   </div>
@@ -377,7 +374,7 @@ const App: React.FC = () => {
                       name="pets"
                       value={input.pets}
                       onChange={handleInputChange}
-                      placeholder="e.g. Toby the dog"
+                      placeholder="e.g. Bella the cat"
                       className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
                     />
                   </div>
@@ -388,7 +385,7 @@ const App: React.FC = () => {
                       name="comfortItem"
                       value={input.comfortItem}
                       onChange={handleInputChange}
-                      placeholder="e.g. blue teddy bear"
+                      placeholder="e.g. yellow blanket"
                       className="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
                     />
                   </div>
@@ -474,7 +471,7 @@ const App: React.FC = () => {
               The Library
             </h3>
             {savedStories.length === 0 ? (
-              <p className="text-[10px] text-slate-600 italic px-4 py-2">Heart a story to save it...</p>
+              <p className="text-[10px] text-slate-600 italic px-4 py-2">Tap the heart to save stories...</p>
             ) : (
               <div className="space-y-2.5">
                 {savedStories.map(story => (
